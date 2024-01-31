@@ -1,0 +1,143 @@
+
+1. go to root (cd /root/ ) . (both Master and Worker can perform this in their instances)
+
+[ec2-user@ip-172-31-17-249 ~]$ sudo su -
+Last login: Tue Jan 23 04:20:39 UTC 2024 on pts/0
+[root@ip-172-31-17-249 ~]# exit
+logout
+[ec2-user@ip-172-31-17-249 ~]$
+
+
+2. git clone https://github.com/ashishrpandey/example-voting-app
+
+[root@ip-172-31-17-249 ~]# git clone https://github.com/ashishrpandey/example-voting-app
+Cloning into 'example-voting-app'...
+remote: Enumerating objects: 494, done.
+remote: Total 494 (delta 0), reused 0 (delta 0), pack-reused 494
+Receiving objects: 100% (494/494), 236.18 KiB | 13.12 MiB/s, done.
+Resolving deltas: 100% (179/179), done.
+[root@ip-172-31-17-249 ~]#
+
+3. go to /root/example-voting-app/k8s-specifications
+
+[root@ip-172-31-17-249 ~]# cd /root/example-voting-app/k8s-specifications
+
+4. [root@ip-172-31-7-102 k8s-specifications]# kubectl apply -f .
+
+[root@ip-172-31-17-249 k8s-specifications]# kubectl apply -f .
+deployment.apps/db unchanged
+service/db unchanged
+deployment.apps/redis unchanged
+service/redis unchanged
+deployment.apps/result unchanged
+service/result unchanged
+deployment.apps/vote unchanged
+service/vote unchanged
+deployment.apps/worker unchanged
+[root@ip-172-31-17-249 k8s-specifications]#
+
+5. for voting and result pods, Observe that NodePort is assigned.
+
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+service/db               ClusterIP   10.100.244.192   <none>        5432/TCP         47h
+service/kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          12d
+service/kubia-nodeport   NodePort    10.103.126.151   <none>        80:30123/TCP     7d
+service/kubia2           ClusterIP   10.99.10.99      <none>        80/TCP           7d1h
+service/redis            ClusterIP   10.101.249.214   <none>        6379/TCP         47h
+service/result           NodePort    10.108.120.39    <none>        5001:31001/TCP   47h
+service/vote             NodePort    10.102.130.23    <none>        5000:31000/TCP   47h
+
+
+6. take your publicIP (your instance IP) : NodePort ► open 2 browsers , one for VOTING and one for Results.
+it's working.
+
+
+7 try voting and see the results paralelly in results page.
+it's working as per vote.
+
+
+8. Now try to delete the Pods one by one (first voting Pod, then worker pod, then db pod) and see what happens to the voting and result app after deleting.
+
+after deleting voting Pod, no connectivity issue observed for result app while connectivity issue observed momentry and connected to new pod.
+after deleting worker Pod, no connectivity issue observed for result app while connectivity issue observed momentry and connected to new pod.
+after deleting db Pod, deleting db pod, both voting and worker pod got restart. One observation, post deletion % voting for cats/dog showing changed to 50% while earlier it was 100/0 %. New db pod created as while crateion RS is being used for craeting db pod. 
+
+Deletion of Vote POD::
+
+[root@ip-172-31-17-249 k8s-specifications]# kubectl delete pod vote-94849dc97-44lbh
+pod "vote-94849dc97-44lbh" deleted
+[root@ip-172-31-17-249 k8s-specifications]# kubectl get pod
+NAME                                               READY   STATUS      RESTARTS   AGE
+batch-job-every-fifteen-minutes-1706686200-scbs7   0/1     Completed   0          34m
+batch-job-every-fifteen-minutes-1706687100-fw2wl   0/1     Completed   0          19m
+batch-job-every-fifteen-minutes-1706688000-n5jdf   0/1     Completed   0          4m45s
+db-b54cd94f4-f27pd                                 1/1     Running     0          47h
+kubia-7xsw8                                        1/1     Running     0          8d
+kubia-jxwcb                                        1/1     Running     0          8d
+kubia-manual                                       1/1     Running     0          8d
+kubia-manual-worker                                1/1     Running     0          8d
+kubia-v65sj                                        1/1     Running     0          8d
+kubia2-tztc2                                       1/1     Running     0          8d
+kubia2-zftnz                                       1/1     Running     0          8d
+nginx-akshay                                       1/1     Running     0          12d
+nginx-amit                                         1/1     Running     0          12d
+redis-868d64d78-rgzcc                              1/1     Running     0          47h
+result-5d57b59f4b-mm6j6                            1/1     Running     0          47h
+ssd-monitor-d9z77                                  1/1     Running     0          7d3h
+vote-94849dc97-ss48c                               1/1     Running     0          20s
+worker-dd46d7584-trf6t                             1/1     Running     0          47h
+[root@ip-172-31-17-249 k8s-specifications]#
+
+
+Deletion of worker POD::
+[root@ip-172-31-17-249 k8s-specifications]# kubectl delete pod worker-dd46d7584-trf6t
+pod "worker-dd46d7584-trf6t" deleted
+
+[root@ip-172-31-17-249 k8s-specifications]# kubectl get pod
+NAME                                               READY   STATUS      RESTARTS   AGE
+batch-job-every-fifteen-minutes-1706686200-scbs7   0/1     Completed   0          36m
+batch-job-every-fifteen-minutes-1706687100-fw2wl   0/1     Completed   0          21m
+batch-job-every-fifteen-minutes-1706688000-n5jdf   0/1     Completed   0          6m59s
+db-b54cd94f4-f27pd                                 1/1     Running     0          47h
+kubia-7xsw8                                        1/1     Running     0          8d
+kubia-jxwcb                                        1/1     Running     0          8d
+kubia-manual                                       1/1     Running     0          8d
+kubia-manual-worker                                1/1     Running     0          8d
+kubia-v65sj                                        1/1     Running     0          8d
+kubia2-tztc2                                       1/1     Running     0          8d
+kubia2-zftnz                                       1/1     Running     0          8d
+nginx-akshay                                       1/1     Running     0          12d
+nginx-amit                                         1/1     Running     0          12d
+redis-868d64d78-rgzcc                              1/1     Running     0          47h
+result-5d57b59f4b-mm6j6                            1/1     Running     0          47h
+ssd-monitor-d9z77                                  1/1     Running     0          7d3h
+vote-94849dc97-ss48c                               1/1     Running     0          2m34s
+worker-dd46d7584-cgnpv                             1/1     Running     0          49s
+[root@ip-172-31-17-249 k8s-specifications]# 
+
+[root@ip-172-31-17-249 k8s-specifications]# kubectl delete pod db-b54cd94f4-f27pd
+pod "db-b54cd94f4-f27pd" deleted
+
+
+
+[root@ip-172-31-17-249 k8s-specifications]# kubectl get pod
+NAME                                               READY   STATUS      RESTARTS   AGE
+batch-job-every-fifteen-minutes-1706686200-scbs7   0/1     Completed   0          38m
+batch-job-every-fifteen-minutes-1706687100-fw2wl   0/1     Completed   0          23m
+batch-job-every-fifteen-minutes-1706688000-n5jdf   0/1     Completed   0          8m20s
+db-b54cd94f4-lvhs9                                 1/1     Running     0          63s
+kubia-7xsw8                                        1/1     Running     0          8d
+kubia-jxwcb                                        1/1     Running     0          8d
+kubia-manual                                       1/1     Running     0          8d
+kubia-manual-worker                                1/1     Running     0          8d
+kubia-v65sj                                        1/1     Running     0          8d
+kubia2-tztc2                                       1/1     Running     0          8d
+kubia2-zftnz                                       1/1     Running     0          8d
+nginx-akshay                                       1/1     Running     0          12d
+nginx-amit                                         1/1     Running     0          12d
+redis-868d64d78-rgzcc                              1/1     Running     0          47h
+result-5d57b59f4b-mm6j6                            1/1     Running     1          47h
+ssd-monitor-d9z77                                  1/1     Running     0          7d3h
+vote-94849dc97-ss48c                               1/1     Running     0          3m55s
+worker-dd46d7584-cgnpv                             1/1     Running     1          2m10s
+[root@ip-172-31-17-249 k8s-specifications]#
