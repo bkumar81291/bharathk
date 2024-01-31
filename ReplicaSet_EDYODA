@@ -1,0 +1,89 @@
+Write a common use-case, where you will use a daemon set instead of replica set.
+
+DaemonSets is used when a single copy of application must run on all or a subset of the nodes in the cluster, Like CPU or Memory usage monitoring of nodes.
+
+[root@ip-172-31-17-249 04-controllers]# pwd
+/root/kubernetes-training/04-controllers
+
+[root@ip-172-31-17-249 04-controllers]# ls -lrth
+total 44K
+-rw-r--r-- 1 root root 280 Jan 19 07:43 time-limited-batch-job.yaml
+drwxr-xr-x 2 root root  24 Jan 19 07:43 ssd-monitor
+-rw-r--r-- 1 root root 290 Jan 19 07:43 multi-completion-parallel-batch-job.yaml
+-rw-r--r-- 1 root root 273 Jan 19 07:43 multi-completion-batch-job.yaml
+drwxr-xr-x 2 root root  38 Jan 19 07:43 kubia-unhealthy
+-rw-r--r-- 1 root root 266 Jan 19 07:43 kubia-replicaset.yaml
+-rw-r--r-- 1 root root 325 Jan 19 07:43 kubia-replicaset-matchexpressions.yaml
+-rw-r--r-- 1 root root 294 Jan 19 07:43 kubia-rc.yaml
+-rw-r--r-- 1 root root 197 Jan 19 07:43 kubia-liveness-probe.yaml
+-rw-r--r-- 1 root root 227 Jan 19 07:43 kubia-liveness-probe-initial-delay.yaml
+-rw-r--r-- 1 root root 371 Jan 19 07:43 cronjob.yaml
+-rw-r--r-- 1 root root 239 Jan 19 07:43 batch-job.yaml
+drwxr-xr-x 2 root root  24 Jan 19 07:43 batch-job
+-rw-r--r-- 1 root root 308 Jan 31 08:42 ssd-monitor-daemonset.yaml
+[root@ip-172-31-17-249 04-controllers]# cat ssd-monitor-daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ssd-monitor
+spec:
+  selector:
+    matchLabels:
+      app: ssd-monitor
+  template:
+    metadata:
+      labels:
+        app: ssd-monitor
+    spec:
+      nodeSelector:
+        disk: ssd
+      containers:
+      - name: main
+        image: luksa/ssd-monitor
+
+[root@ip-172-31-17-249 04-controllers]# kubectl apply -f ssd-monitor-daemonset.yaml
+daemonset.apps/ssd-monitor created
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get ds
+NAME          DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+ssd-monitor   0         0         0       0            0           disk=ssd        3s
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get pods
+No resources found in default namespace.
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get nodes -o wide
+NAME                                               STATUS   ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE         KERNEL-VERSION                  CONTAINER-RUNTIME
+ip-172-31-43-183.ap-southeast-1.compute.internal   Ready    master   12d   v1.18.5   172.31.43.183   <none>        Amazon Linux 2   5.10.205-195.804.amzn2.x86_64   docker://20.10.25
+ip-172-31-17-249.ap-southeast-1.compute.internal    Ready    <none>   12d   v1.18.5   172.31.43.58    <none>        Amazon Linux 2   5.10.205-195.804.amzn2.x86_64   docker://20.10.25
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get nodes --show-labels
+NAME                                               STATUS   ROLES    AGE   VERSION   LABELS
+ip-172-31-43-183.ap-southeast-1.compute.internal   Ready    master   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-43-183.ap-southeast-1.compute.internal,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+ip-172-31-17-249.ap-southeast-1.compute.internal    Ready    <none>   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-17-249.ap-southeast-1.compute.internal,kubernetes.io/os=linux
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl label nodes ip-172-31-17-249.ap-southeast-1.compute.internal disk=ssd
+node/ip-172-31-17-249.ap-southeast-1.compute.internal labeled
+
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get ds
+NAME          DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+ssd-monitor   1         1         1       1            1           disk=ssd        61s
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get pods
+NAME                READY   STATUS    RESTARTS   AGE
+ssd-monitor-6zj4f   1/1     Running   0          10s
+
+[root@ip-172-31-17-249 04-controllers]# kubectl get nodes --show-labels
+NAME                                               STATUS   ROLES    AGE   VERSION   LABELS
+ip-172-31-43-183.ap-southeast-1.compute.internal   Ready    master   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-43-183.ap-southeast-1.compute.internal,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+ip-172-31-17-249.ap-southeast-1.compute.internal    Ready    <none>   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disk=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-17-249.ap-southeast-1.compute.internal,kubernetes.io/os=linux
+[root@ip-172-31-17-249 04-controllers]# kubectl get nodes --show-labels
+NAME                                               STATUS   ROLES    AGE   VERSION   LABELS
+ip-172-31-43-183.ap-southeast-1.compute.internal   Ready    master   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-43-183.ap-southeast-1.compute.internal,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+ip-172-31-17-249.ap-southeast-1.compute.internal    Ready    <none>   12d   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disk=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=ip-172-31-17-249.ap-southeast-1.compute.internal,kubernetes.io/os=linux
+
