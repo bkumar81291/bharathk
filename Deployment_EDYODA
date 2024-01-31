@@ -1,0 +1,200 @@
+Suppose you have deployed your application using a deployment controller. Assume the initial number of replicas is one. Write the steps needed to update a container's image using deployment, making sure that there is zero downtime.
+
+[root@ip-172-31-17-249 09-deployments]# echo "##################Deployment##################D"
+##################Deployment##################D
+[root@ip-172-31-17-249 09-deployments]# pwd
+/root/kubernetes-training/09-deployments
+
+
+[root@ip-172-31-17-249 09-deployments]# ls -lrth
+total 24K
+drwxr-xr-x 2 root root  38 Jan 19 07:43 v4
+drwxr-xr-x 2 root root  38 Jan 19 07:43 v3
+drwxr-xr-x 2 root root  38 Jan 19 07:43 v2
+drwxr-xr-x 2 root root  38 Jan 19 07:43 v1
+-rw-r--r-- 1 root root 400 Jan 19 07:43 kubia-rc-and-service-v1.yaml
+-rw-r--r-- 1 root root 305 Jan 19 07:43 kubia-deployment-v3.yaml
+-rw-r--r-- 1 root root 474 Jan 19 07:43 kubia-deployment-v3-with-readinesscheck.yaml
+-rw-r--r-- 1 root root 269 Jan 19 07:43 kubia-deployment-v2.yaml
+-rw-r--r-- 1 root root 283 Jan 19 07:43 kubia-deployment-v1.yaml
+-rw-r--r-- 1 root root 435 Jan 19 07:43 kubia-deployment-and-service-v1.yaml
+[root@ip-172-31-17-249 09-deployments]# cat kubia-deployment-and-service-v1.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubia
+spec:
+  selector:
+    matchLabels:
+      app: kubia
+  replicas: 3
+  template:
+    metadata:
+      name: kubia
+      labels:
+        app: kubia
+    spec:
+      containers:
+      - image: luksa/kubia:v1
+        name: nodejs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia
+spec:
+  type: ClusterIP
+  selector:
+    app: kubia
+  ports:
+  - port: 80
+    targetPort: 8080
+[root@ip-172-31-17-249 09-deployments]# vi kubia-deployment-and-service-v1.yaml
+
+
+
+[root@ip-172-31-17-249 09-deployments]# cat kubia-deployment-and-service-v1.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubia
+spec:
+  selector:
+    matchLabels:
+      app: kubia
+  replicas: 1
+  template:
+    metadata:
+      name: kubia
+      labels:
+        app: kubia
+    spec:
+      containers:
+      - image: luksa/kubia:v1
+        name: nodejs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia
+spec:
+  type: ClusterIP
+  selector:
+    app: kubia
+  ports:
+  - port: 80
+    targetPort: 8080
+[root@ip-172-31-17-249 09-deployments]# kubectl apply -f kubia-deployment-and-service-v1.yaml
+deployment.apps/kubia created
+service/kubia created
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          6s
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          8s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          9s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          10s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          23s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          25s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+kubia-59d857b444-nbtvl   0/1     ContainerCreating   0          28s
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+kubia-59d857b444-nbtvl   1/1     Running   0          30s
+[root@ip-172-31-17-249 09-deployments]# kubectl get deploy
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+kubia   1/1     1            1           70s
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl describe deployment kubia
+Name:                   kubia
+Namespace:              default
+CreationTimestamp:      Wed, 31 Jan 2024 08:32:42 +0000
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=kubia
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=kubia
+  Containers:
+   nodejs:
+    Image:        luksa/kubia:v1
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   kubia-59d857b444 (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  76s   deployment-controller  Scaled up replica set kubia-59d857b444 to 1
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl patch deployment kubia -p '{"spec": {"minReadySeconds": 10}}'
+deployment.apps/kubia patched
+[root@ip-172-31-17-249 09-deployments]# kubectl describe deployment kubia
+Name:                   kubia
+Namespace:              default
+CreationTimestamp:      Wed, 31 Jan 2024 08:32:42 +0000
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=kubia
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        10
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=kubia
+  Containers:
+   nodejs:
+    Image:        luksa/kubia:v1
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   kubia-59d857b444 (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  2m2s  deployment-controller  Scaled up replica set kubia-59d857b444 to 1
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+kubia-59d857b444-nbtvl   1/1     Running   0          2m15s
+
+
+[root@ip-172-31-17-249 09-deployments]# kubectl get deploy
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+kubia   1/1     1            1           2m33s
